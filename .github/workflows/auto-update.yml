@@ -1,0 +1,30 @@
+name: Auto Update IMMICH_VERSION and Build Image
+
+on:
+  schedule:
+    - cron: '0 3 * * *'
+  workflow_dispatch:
+
+jobs:
+  update-version:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v3
+
+      - name: Get latest release tag from original repo
+        id: get_latest
+        run: |
+          LATEST_TAG=$(curl -s https://api.github.com/repos/immich-app/immich/releases/latest | jq -r .tag_name)
+          echo "Latest release: $LATEST_TAG"
+          echo "LATEST_TAG=$LATEST_TAG" >> $GITHUB_ENV
+
+      - name: Update IMMICH_VERSION in docker-compose.yml
+        run: |
+          sed -i "s/IMMICH_VERSION=.*/IMMICH_VERSION=${LATEST_TAG}/" .env || echo "IMMICH_VERSION=${LATEST_TAG}" >> .env
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add .env
+          git commit -m "Update IMMICH_VERSION to $LATEST_TAG"
+          git push
